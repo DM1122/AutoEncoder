@@ -42,3 +42,17 @@ def callbacks(log, model):
     callbacks = [callback_NaN, callback_checkpoint, callback_early_stopping, callback_tensorboard]
 
     return callbacks
+
+def split_autoencoder(model):
+    '''
+    Splits an autoencoder model into its encoder and decoder components.
+
+    Args:
+        model: compiled keras autoencoder
+    '''
+
+    print(model.get_layer('Bottleneck').output.shape)
+    model_encoder = keras.Model(inputs=model.input, outputs=model.get_layer('Bottleneck').output)
+    model_decoder = keras.Model(inputs=keras.Input(shape=model.get_layer('Bottleneck').output.shape), outputs=model.output)
+
+    return model_encoder, model_decoder

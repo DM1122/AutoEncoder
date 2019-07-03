@@ -15,6 +15,8 @@ from libs import datalib, imagelib, modelib
 import_path = './images/'
 data_dir = './data/'
 
+model_dir = './models/'
+
 encoder_layers = 3
 encoder_bottleneck_size = 32
 encoder_layers_ratio = 2
@@ -27,10 +29,11 @@ learn_rate = 0.01
 
 if __name__ == '__main__':
 
-    if not os.listdir(data_dir):        # check data folder
+    # Import data
+    if not os.listdir(data_dir):
         print('No data located. Importing toy dataset...')
 
-        x_train, _, x_test, _ = datalib.load_toy('B')
+        x_train, _, x_test, _ = datalib.load_toy('A')
 
         datalib.inspect(x_train, 'MNIST_training')
         datalib.inspect(x_test, 'MNIST_testing')
@@ -107,8 +110,8 @@ if __name__ == '__main__':
     model.compile(optimizer=keras.optimizers.Adam(lr=learn_rate), loss='mse', metrics=['mae'])
 
 
-    log_dir = './logs/' + os.path.basename(__file__) + '/{0}/'.format(dt.datetime.now().strftime('%Y%m%d-%H%M%S'))
-    model_dir = './models/' + os.path.basename(__file__) + '/model.keras'
+    # log_dir = './logs/' + os.path.basename(__file__) + '/{0}/'.format(dt.datetime.now().strftime('%Y%m%d-%H%M%S'))
+    # model_dir = './models/' + os.path.basename(__file__) + '/model.keras'
 
     model.fit(
         x=x_train,
@@ -117,7 +120,6 @@ if __name__ == '__main__':
         epochs=epochs,
         verbose=1,
         callbacks=None,         # modelib.callbacks(log_dir, model_dir)
-        validation_split=0.0,
         validation_data=(x_test, x_test),
         shuffle=True,
         class_weight=None,
@@ -128,28 +130,31 @@ if __name__ == '__main__':
 
     fig, axs = pyplot.subplots(3,8)
 
+
+    # Viewer
     for i in range(len(axs[1])):
         
+        model_encoder, model_decoder = modelib.split_autoencoder(model)
+
         j = random.randint(0,x_test.shape[0])       # used to sample random from dataset
-        input = np.expand_dims(x_test[j], axis=0)
+        sample = x_test[j]
 
-        # Plot original image        
-        axs[0,i].imshow(x_test[j], cmap='gray', interpolation=None)
+        # Plot original image
+        axs[0,i].imshow(sample, cmap='gray', interpolation=None)
 
-        # Plot latent space vector
-        model_latent = keras.Model(inputs=model.input, outputs=model.get_layer('Bottleneck').output)
-        output_latent = model_latent.predict(input, batch_size=None, verbose=0, steps=None, callbacks=None)
+        # Plot encoding
+        output_enc = model_encoder.predict(np.expand_dims(sample, axis=0), batch_size=None, verbose=0, steps=None, callbacks=None)
 
-        if int(math.sqrt(output_latent.shape[1]) + 0.5) ** 2 == output_latent.shape[1]:
-            output_latent = np.reshape(output_latent, (int(math.sqrt(output_latent.shape[1])) , int(math.sqrt(output_latent.shape[1]) )))
-
-        axs[1,i].imshow(output_latent, cmap='gray', interpolation=None)
+        if int(math.sqrt(output_enc.shape[1]) + 0.5) ** 2 == output_enc.shape[1]:         # check if vector is perfect square and can be displayed in 2D
+            output_enc_reshaped = np.reshape(output_enc, (int(math.sqrt(output_enc.shape[1])) , int(math.sqrt(output_enc.shape[1]) )))       # reshape vector to perfect square
+            axs[1,i].imshow(output_enc_reshaped, cmap='gray', interpolation=None)
+        else:
+            axs[1,i].imshow(output_enc, cmap='gray', interpolation=None)
         
-        # Plot output
-        input = np.expand_dims(x_test[j], axis=0)
-        output = model.predict(input, batch_size=None, verbose=0, steps=None, callbacks=None)
-        output = np.squeeze(output, axis=0)
-        axs[2,i].imshow(output, cmap='gray', interpolation=None)
+        # Plot decoding
+        output_dec = model_decoder.predict(np.expand_dims(output_enc, axis=0), batch_size=None, verbose=0, steps=None, callbacks=None)
+        output_dec = np.squeeze(output, axis=0)
+        axs[2,i].imshow(output_dec, cmap='gray', interpolation=None)
 
 
     # fig.tight_layout()
@@ -157,14 +162,17 @@ if __name__ == '__main__':
     
     pyplot.show()
 
-    answer = None
-    while answer not in ('y','n'):
-        answer = input('Save model? [Y/N]: ')
-        if answer == 'y':
-            print('Saving model to disk...')
-            # Save
-            print('Success!')
-        elif answer == 'n':
-            print('Sending model to android hell...')
+    # query = input()
+    # if query == 'y':
+    #     print('Saving model to disk...')
+    #     # Save
+    #     print('Success!')
+    # else:
+    #     print('Sending model to android hell...')
+
+    print('Saving model to disk...')
+    model.save(model_dir + os.path.splitext(os.path.basename(__file__))[0] + '_' + dt.datetime.now().strftime('%Y%m%d-%H%M%S') + '.h5')
+
+
 
     print('Debug:\n$tensorboard --logdir=logs/')
