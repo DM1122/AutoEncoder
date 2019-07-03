@@ -1,5 +1,6 @@
 
 import datetime as dt
+import math
 import matplotlib
 from matplotlib import pyplot
 import numpy as np
@@ -12,29 +13,33 @@ import libs
 from libs import datalib, imagelib, modelib
 
 import_path = './images/'
+data_dir = './data/'
 
-encoder_layers = 6
-encoder_bottleneck_size = 10
+encoder_layers = 3
+encoder_bottleneck_size = 32
 encoder_layers_ratio = 2
 
 batch_size = 256
-epochs = 25
+epochs = 1
 learn_rate = 0.01
 
 
 
 if __name__ == '__main__':
-    print('Importing toy dataset')
-    (x_train, _), (x_test, _) = keras.datasets.mnist.load_data()
-    datalib.inspect(x_train, 'MNIST_training')
-    datalib.inspect(x_test, 'MNIST_testing')
 
-    # Scaling
-    x_train = x_train / 255
-    x_test = x_test / 255
+    if not os.listdir(data_dir):        # check data folder
+        print('No data located. Importing toy dataset...')
+
+        x_train, _, x_test, _ = datalib.load_toy('B')
+
+        datalib.inspect(x_train, 'MNIST_training')
+        datalib.inspect(x_test, 'MNIST_testing')
+
+    else:
+        print('Loading data...')
+        # proceed with custom data induction
 
 
-    
     model = keras.Sequential()
 
     model.add(keras.layers.Flatten(input_shape=(x_train.shape[1], x_train.shape[2])))
@@ -86,7 +91,7 @@ if __name__ == '__main__':
     # Output layer
     model.add(keras.layers.Dense(
         units=x_train[0].size,
-        activation='relu',        # might need sigmoid!
+        activation='relu',
         use_bias=True,
         kernel_initializer='glorot_uniform',
         bias_initializer='zeros',
@@ -134,6 +139,10 @@ if __name__ == '__main__':
         # Plot latent space vector
         model_latent = keras.Model(inputs=model.input, outputs=model.get_layer('Bottleneck').output)
         output_latent = model_latent.predict(input, batch_size=None, verbose=0, steps=None, callbacks=None)
+
+        if int(math.sqrt(output_latent.shape[1]) + 0.5) ** 2 == output_latent.shape[1]:
+            output_latent = np.reshape(output_latent, (int(math.sqrt(output_latent.shape[1])) , int(math.sqrt(output_latent.shape[1]) )))
+
         axs[1,i].imshow(output_latent, cmap='gray', interpolation=None)
         
         # Plot output
@@ -144,8 +153,18 @@ if __name__ == '__main__':
 
 
     # fig.tight_layout()
-    fig.canvas.set_window_title('Autoencoder Output') 
+    fig.canvas.set_window_title('Autoencoder Output')
     
     pyplot.show()
+
+    answer = None
+    while answer not in ('y','n'):
+        answer = input('Save model? [Y/N]: ')
+        if answer == 'y':
+            print('Saving model to disk...')
+            # Save
+            print('Success!')
+        elif answer == 'n':
+            print('Sending model to android hell...')
 
     print('Debug:\n$tensorboard --logdir=logs/')
