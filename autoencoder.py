@@ -66,7 +66,7 @@ def build_autoencoder(shape_x, shape_y, shape_z=None):
     if shape_z is not None:
         encoder_input = keras.layers.Input(shape=(shape_x, shape_y, shape_z, ))      # [width, height, channels, batch]
         encoder.add(encoder_input)
-        encoder.add(keras.layers.Flatten(input_shape=(shape_x, shape_y, shape_z, )))        # because keras does not like to open models wihout an input_shape()
+        encoder.add(keras.layers.Flatten(input_shape=(shape_x, shape_y, shape_z, )))        # because keras does not like to open models wihout an input_shape() in first layer
     else:
         encoder_input = keras.layers.Input(shape=(shape_x, shape_y, ))      # [width, height, batch]
         encoder.add(encoder_input)

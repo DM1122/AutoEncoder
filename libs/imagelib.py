@@ -22,6 +22,10 @@ def load_img(path, scale=1, size=None):
 
     return img_array
 
+def save_img(array, path):
+    img = PIL.Image.fromarray(array)
+    img.convert('RGB').save(path)
+
 
 def unload_img_vgg19(img):
     print('Unloading image')

@@ -1,4 +1,6 @@
 import datetime as dt
+import math
+import numpy as np
 import os
 import tensorflow as tf
 from tensorflow import keras
@@ -43,8 +45,12 @@ def callbacks(log, model):
 
     return callbacks
 
+def square_encoding(data):
+    if int(math.sqrt(data.size) + 0.5) ** 2 == data.size:         # check if vector is perfect square
+        data = np.reshape(data, (int(math.sqrt(data.size)) , int(math.sqrt(data.size) )))       # reshape vector to perfect square
+    
+    return data
 
+# def flatten_encoding(data):
 
-
-
-
+#     return data
