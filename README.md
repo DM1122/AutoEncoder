@@ -1,2 +1,2 @@
 # AutoEncoder
-A general multi-purpose neural autoencoder library.
+A general-purpose neural autoencoder library.
