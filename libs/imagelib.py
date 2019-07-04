@@ -4,8 +4,14 @@ import numpy as np
 import os
 import PIL
 
-def load_img(path):
+def load_img(path, scale=1, size=None):
     img = PIL.Image.open(path)
+
+    # Resize
+    if size is not None:
+        scale = size / max(img.size)
+
+    img = img.resize((round(img.size[0]*scale), round(img.size[1]*scale)), PIL.Image.ANTIALIAS)
 
     # Convert image to array
     img_array = np.array(img)       # [height, width, channel]
@@ -33,14 +39,7 @@ def unload_img_vgg19(img):
 
     return img
 
-def img_rescale(img, scale=None, max_size=None):
-    if max_size is not None:
-        scale = max_size / max(img.size)
 
-    print('Rescaling image by factor ', round(scale,2))
-    img = img.resize((round(img.size[0]*scale), round(img.size[1]*scale)), PIL.Image.ANTIALIAS)
-
-    return img
 
 def RGBsplitter(img):
     r = img[:, :, 0]

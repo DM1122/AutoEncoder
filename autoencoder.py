@@ -1,4 +1,3 @@
-
 import datetime as dt
 import math
 import matplotlib
@@ -12,21 +11,22 @@ from tensorflow import keras
 import libs
 from libs import datalib, imagelib, modelib
 
-data_dir = './data/'
+data_dir = './data/train/'
 log_dir = './logs/'
 model_dir = './models/'
 
-autoencoder_layers = 3
-autoencoder_bottleneck = 128
-autoencoder_ratio = 4
 
-batch_size = 1
-epochs = 100
+data_rgb = True
+data_size = 128
+data_split = 0.9
+
+batch_size = 16
+epochs = 10
 learn_rate = 0.001
 
-data_split = 1
-data_rgb = True
-
+autoencoder_layers = 3
+autoencoder_bottleneck = 256
+autoencoder_ratio = 2
 
 
 def build_autoencoder(shape_x, shape_y, shape_z=None):
@@ -40,9 +40,12 @@ def build_autoencoder(shape_x, shape_y, shape_z=None):
     '''
 
     print('Building model with the following parameters:')
+    
     if data_rgb:
+        print('Compression Factor: ', round(shape_x*shape_y*shape_z/autoencoder_bottleneck), '(', round(autoencoder_bottleneck*100/(shape_x*shape_y*shape_z), 2), '% )')
         print('Input Layer:', shape_x*shape_y*shape_z)
     else:
+        print('Compression Factor: ', round(shape_x*shape_y/autoencoder_bottleneck), '(', round(autoencoder_bottleneck*100/(shape_x*shape_y), 2), '% )')
         print('Input Layer:', shape_x*shape_y)
     for l in range(autoencoder_layers):
         print('Encoder Layer', l+1, ':', autoencoder_bottleneck * autoencoder_ratio**(autoencoder_layers - (l+1)))
@@ -54,6 +57,7 @@ def build_autoencoder(shape_x, shape_y, shape_z=None):
         print('Output Layer:', shape_x*shape_y)
     print('')
     input('Press Enter to continue...')
+    print('')
 
 
     #region Encoder assembly
@@ -61,12 +65,12 @@ def build_autoencoder(shape_x, shape_y, shape_z=None):
 
     if shape_z is not None:
         encoder_input = keras.layers.Input(shape=(shape_x, shape_y, shape_z, ))      # [width, height, channels, batch]
+        encoder.add(encoder_input)
+        encoder.add(keras.layers.Flatten(input_shape=(shape_x, shape_y, shape_z, )))        # because keras does not like to open models wihout an input_shape()
     else:
         encoder_input = keras.layers.Input(shape=(shape_x, shape_y, ))      # [width, height, batch]
-    
-    encoder.add(encoder_input)
-    
-    encoder.add(keras.layers.Flatten())
+        encoder.add(encoder_input)
+        encoder.add(keras.layers.Flatten(input_shape=(shape_x, shape_y, )))
 
     for l in range(autoencoder_layers):
         encoder.add(keras.layers.Dense(
@@ -142,6 +146,7 @@ def build_autoencoder(shape_x, shape_y, shape_z=None):
 
     return autoencoder, encoder, decoder
 
+
 def preview_autoencoder():
     fig, axs = pyplot.subplots(3,8)
 
@@ -182,6 +187,19 @@ def preview_autoencoder():
     pyplot.show()
 
 
+def save_autoencoder():
+    print('Saving model to disk...')
+
+    model_dir_save = model_dir + os.path.splitext(os.path.basename(__file__))[0] + '_' + dt.datetime.now().strftime('%Y%m%d-%H%M%S') + '/'
+    os.makedirs(model_dir_save)
+
+    autoencoder.save(model_dir_save + 'autoencoder'  + '.h5')
+    encoder.save(model_dir_save + 'encoder'  + '.h5')
+    decoder.save(model_dir_save + 'decoder'  + '.h5')
+
+    print('Success!')
+
+
 
 if __name__ == '__main__':
 
@@ -189,7 +207,7 @@ if __name__ == '__main__':
     if os.listdir(data_dir) is not None:
         print('Loading data...')
 
-        data = np.concatenate([imagelib.load_img(data_dir + i) for i in os.listdir(data_dir)])
+        data = np.concatenate([imagelib.load_img(path=data_dir+i, size=data_size) for i in os.listdir(data_dir)])
         datalib.inspect(data)
 
         x_train, x_test = datalib.split(data, data_split)
@@ -246,13 +264,7 @@ if __name__ == '__main__':
     preview_autoencoder()
 
     if input('Save model? [Y/N]: ') == 'y':
-        print('Saving model to disk...')
-        model_dir_save = model_dir + os.path.splitext(os.path.basename(__file__))[0] + '_' + dt.datetime.now().strftime('%Y%m%d-%H%M%S') + '/'
-        os.makedirs(model_dir_save)
-        autoencoder.save(model_dir_save + 'autoencoder'  + '.h5')
-        encoder.save(model_dir_save + 'encoder'  + '.h5')
-        decoder.save(model_dir_save + 'decoder'  + '.h5')
-        print('Success!')
+        save_autoencoder()
     else:
         print('Model sent to android hell')
 
