@@ -12,21 +12,20 @@ from tensorflow import keras
 import libs
 from libs import datalib, imagelib, modelib
 
-import_path = './images/'
 data_dir = './data/'
-
+log_dir = './logs/'
 model_dir = './models/'
 
-encoder_layers = 3
-encoder_bottleneck_size = 64
-encoder_layer_ratio = 2
+autoencoder_layers = 3
+autoencoder_bottleneck = 64
+autoencoder_ratio = 2
 
 batch_size = 256
-epochs = 50
+epochs = 5
 learn_rate = 0.01
 
 
-def build_autoencoder_legacy(input_x, input_y):
+def build_autoencoder_funcapi(input_x, input_y):
     '''
     Builds an autoencoder using the Functional api
 
@@ -41,7 +40,7 @@ def build_autoencoder_legacy(input_x, input_y):
     encoder_layer = keras.layers.Flatten()(input_layer)
 
     encoder_layer = keras.layers.Dense(
-        units= encoder_bottleneck_size * encoder_layers_ratio**(encoder_layers),
+        units= autoencoder_bottleneck * encoder_layers_ratio**(autoencoder_layers),
         activation='relu',
         use_bias=True,
         kernel_initializer='glorot_uniform',
@@ -54,7 +53,7 @@ def build_autoencoder_legacy(input_x, input_y):
         name='Encoder_')(encoder_layer)
     
     encoder_layer = keras.layers.Dense(
-        units=encoder_bottleneck_size,
+        units=autoencoder_bottleneck,
         activation='relu',
         use_bias=True,
         kernel_initializer='glorot_uniform',
@@ -67,7 +66,7 @@ def build_autoencoder_legacy(input_x, input_y):
         name='Bottleneck')(encoder_layer)
 
     decoder_layer = keras.layers.Dense(
-        units= encoder_bottleneck_size * encoder_layers_ratio**(3),
+        units= autoencoder_bottleneck * encoder_layers_ratio**(3),
         activation='relu',
         use_bias=True,
         kernel_initializer='glorot_uniform',
@@ -103,14 +102,14 @@ def build_autoencoder_legacy(input_x, input_y):
 
     # Build decoder
     # create a placeholder for an encoded (32-dimensional) input
-    decoder_input = keras.layers.Input(shape=(encoder_bottleneck_size,))
+    decoder_input = keras.layers.Input(shape=(autoencoder_bottleneck,))
     # retrieve the last layer of the autoencoder model
     decoder_output = autoencoder.layers[-1]
     # create the decoder model
     decoder = keras.models.Model(inputs=decoder_input, outputs=decoder_output(decoder_input))
 
 
-    # input_layer_encoded = keras.layers.Input(shape=(encoder_bottleneck_size,))
+    # input_layer_encoded = keras.layers.Input(shape=(autoencoder_bottleneck,))
     # decoder = keras.models.Model(inputs=input_layer_encoded, outputs=autoencoder.layers[-1](input_layer_encoded))
 
     print(autoencoder.layers)
@@ -119,7 +118,7 @@ def build_autoencoder_legacy(input_x, input_y):
 
     return autoencoder, encoder, decoder
 
-def build_autoencoder(input_x, input_y):
+def build_autoencoder_funcapi_seg(input_x, input_y):
     '''
     Builds an encoder and decoder separately, then returns an autoencoder model using the functional api
 
@@ -135,7 +134,7 @@ def build_autoencoder(input_x, input_y):
     encoder_layer = keras.layers.Flatten()(encoder_input)
 
     encoder_layer = keras.layers.Dense(
-        units= encoder_bottleneck_size * encoder_layer_ratio**(encoder_layers),
+        units= autoencoder_bottleneck * autoencoder_ratio**(autoencoder_layers),
         activation='relu',
         use_bias=True,
         kernel_initializer='glorot_uniform',
@@ -148,7 +147,7 @@ def build_autoencoder(input_x, input_y):
         name='Encoder_')(encoder_layer)
 
     encoder_layer = keras.layers.Dense(
-        units=encoder_bottleneck_size,
+        units=autoencoder_bottleneck,
         activation='relu',
         use_bias=True,
         kernel_initializer='glorot_uniform',
@@ -164,10 +163,10 @@ def build_autoencoder(input_x, input_y):
 
 
     # Decoder
-    decoder_input = keras.layers.Input(shape=(encoder_bottleneck_size,))
+    decoder_input = keras.layers.Input(shape=(autoencoder_bottleneck,))
 
     decoder_layer = keras.layers.Dense(
-        units= encoder_bottleneck_size * encoder_layer_ratio**(3),
+        units= autoencoder_bottleneck * autoencoder_ratio**(3),
         activation='relu',
         use_bias=True,
         kernel_initializer='glorot_uniform',
@@ -201,11 +200,110 @@ def build_autoencoder(input_x, input_y):
 
     return autoencoder, encoder, decoder
     
+def build_autoencoder(shape_x, shape_y, shape_z=None):
+    '''
+    Builds an encoder and decoder separately, then returns an autoencoder model using a combination of functional & sequential api
+
+    Args:
+        shape_x: input width
+        shape_y: input height
+        shape_z: input channels (likely RGB)
+    '''
+    #region Encoder assembly
+    encoder = keras.Sequential()
+
+    if shape_z is not None:
+        encoder_input = keras.layers.Input(shape=(shape_x, shape_y, shape_z, ))      # [width, height, channels, batch]
+    else:
+        encoder_input = keras.layers.Input(shape=(shape_x, shape_y, ))      # [width, height, batch]
+    
+    encoder.add(encoder_input)
+    
+    encoder.add(keras.layers.Flatten())
+
+    for l in range(autoencoder_layers):
+        encoder.add(keras.layers.Dense(
+            units= autoencoder_bottleneck * autoencoder_ratio**(autoencoder_layers - (l+1)),
+            activation='relu',
+            use_bias=True,
+            kernel_initializer='glorot_uniform',
+            bias_initializer='zeros',
+            kernel_regularizer=None,
+            bias_regularizer=None,
+            activity_regularizer=None,
+            kernel_constraint=None,
+            bias_constraint=None,
+            name='Encoder_{}'.format(l+1)))
+
+
+    #region Decoder assembly
+    decoder = keras.Sequential()
+
+    decoder_input = keras.layers.Input(shape=(autoencoder_bottleneck, ))
+    decoder.add(decoder_input)
+
+    for l in range(autoencoder_layers-1):
+        decoder.add(keras.layers.Dense(
+            units= autoencoder_bottleneck * autoencoder_ratio**(l+1),
+            activation='relu',
+            use_bias=True,
+            kernel_initializer='glorot_uniform',
+            bias_initializer='zeros',
+            kernel_regularizer=None,
+            bias_regularizer=None,
+            activity_regularizer=None,
+            kernel_constraint=None,
+            bias_constraint=None,
+            name='Decoder_{}'.format(l+1)))
+
+    if shape_z is not None:
+        decoder.add(keras.layers.Dense(
+            units=shape_x * shape_y * shape_z,
+            activation='relu',
+            use_bias=True,
+            kernel_initializer='glorot_uniform',
+            bias_initializer='zeros',
+            kernel_regularizer=None,
+            bias_regularizer=None,
+            activity_regularizer=None,
+            kernel_constraint=None,
+            bias_constraint=None,
+            name='Output'))
+
+        decoder.add(keras.layers.Reshape((shape_x, shape_y, shape_z)))
+
+    else:
+        decoder.add(keras.layers.Dense(
+            units=shape_x * shape_y,
+            activation='relu',
+            use_bias=True,
+            kernel_initializer='glorot_uniform',
+            bias_initializer='zeros',
+            kernel_regularizer=None,
+            bias_regularizer=None,
+            activity_regularizer=None,
+            kernel_constraint=None,
+            bias_constraint=None,
+            name='Output'))
+
+        decoder.add(keras.layers.Reshape((shape_x, shape_y))) 
+    #endregion
+
+
+    #region Autoencoder assembly
+    autoencoder = keras.models.Model(inputs=encoder_input, outputs=decoder(encoder(encoder_input)))
+    #endregion
+
+    return autoencoder, encoder, decoder
+
+
+
+
 
 
 if __name__ == '__main__':
 
-    # Import data
+    #region Data Import
     if not os.listdir(data_dir):
         print('No data located. Importing toy dataset...')
 
@@ -217,12 +315,9 @@ if __name__ == '__main__':
     else:
         print('Loading data...')
         # proceed with custom data induction
+    #endregion
 
     autoencoder, encoder, decoder = build_autoencoder(x_train.shape[1], x_train.shape[2])
-
-    # log_dir = './logs/' + os.path.basename(__file__) + '/{0}/'.format(dt.datetime.now().strftime('%Y%m%d-%H%M%S'))
-    # model_dir = './models/' + os.path.basename(__file__) + '/model.keras'
-
     autoencoder.compile(optimizer=keras.optimizers.Adam(lr=learn_rate), loss='mse', metrics=['mae'])
 
     autoencoder.fit(
@@ -259,7 +354,7 @@ if __name__ == '__main__':
             output_encoded_reshaped = np.reshape(output_encoded, (int(math.sqrt(output_encoded.size)) , int(math.sqrt(output_encoded.size) )))       # reshape vector to perfect square
             axs[1,i].imshow(output_encoded_reshaped, cmap='gray', interpolation=None)
         else:
-            axs[1,i].imshow(output_encoded, cmap='gray', interpolation=None)
+            axs[1,i].imshow(np.expand_dims(output_encoded, axis=0), cmap='gray', interpolation=None)
         
         # Plot decoding
         output_decoded = decoder.predict(np.expand_dims(output_encoded, axis=0), batch_size=None, verbose=0, steps=None, callbacks=None)

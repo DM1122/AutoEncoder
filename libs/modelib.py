@@ -131,3 +131,7 @@ def split_autoencoder(model):
     #     name='Output'))
 
     # model.add(keras.layers.Reshape((x_train.shape[1], x_train.shape[2])))
+
+
+    # log_dir = './logs/' + os.path.basename(__file__) + '/{0}/'.format(dt.datetime.now().strftime('%Y%m%d-%H%M%S'))
+    # model_dir = './models/' + os.path.basename(__file__) + '/model.keras'
