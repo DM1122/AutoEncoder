@@ -4,24 +4,20 @@ import numpy as np
 import os
 import PIL
 
-import_path = './images/'
-
-
 def load_img(path):
-    img_path = path + os.listdir(path)[0] 
-    print('Loading image from ' + img_path)
-
-    img = PIL.Image.open(img_path)
+    img = PIL.Image.open(path)
 
     # Convert image to array
     img_array = np.array(img)       # [height, width, channel]
 
     img_array = np.expand_dims(img_array, axis=0)       # brodcast image array with batch dimension [batch, height, width, channel]
 
+    img_array = img_array / 255
+
     return img_array
 
 
-def unload_img(img):
+def unload_img_vgg19(img):
     print('Unloading image')
     img = np.squeeze(img, axis=0)       # squeeze batch dimension
 

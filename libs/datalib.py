@@ -5,6 +5,9 @@ import random
 import tensorflow as tf
 from tensorflow import keras
 
+import libs
+from libs import imagelib
+
 def load_toy(sel='A'):
     '''
     Imports toy datasets
@@ -38,11 +41,9 @@ def inspect(data, name='data'):
     '''
     print('Inspecting ' + name + '...')
 
-    i = random.randint(0,data.shape[0])       # iterator used to sample random from dataset along batch axis
+    i = random.randint(0,data.shape[0]-1)       # iterator used to sample random from dataset along batch axis
     
     if data.ndim == 3:      # grayscale images
-        # fig = pyplot.figure()
-        # ax = fig.add_subplot(1,1,1)
         fig, ax = pyplot.subplots(1,1)
         fig.canvas.set_window_title('Data Inspection') 
 
@@ -57,7 +58,7 @@ def inspect(data, name='data'):
 
         data_r, data_g, data_b = imagelib.RGBsplitter(data[i])
 
-        axs[0,0].imshow(data, cmap=None, interpolation=None)
+        axs[0,0].imshow(data[i], cmap=None, interpolation=None)
         axs[0,1].imshow(data_r, cmap='Reds', interpolation=None)
         axs[1,0].imshow(data_g, cmap='Greens', interpolation=None)
         axs[1,1].imshow(data_b, cmap='Blues', interpolation=None)
@@ -74,6 +75,13 @@ def inspect(data, name='data'):
     print('Min/Max: ', np.amin(data), '/', np.amax(data))
 
     pyplot.show()
+
+
+def split(data, split):
+    a = data[0:int(data.shape[0] * split)]
+    b = data[int(data.shape[0] * split):]
+
+    return a, b
 
 
 if __name__ == '__main__':
