@@ -4,6 +4,7 @@ import numpy as np
 import os
 import PIL
 
+
 def load_img(path, scale=1, size=None):
     img = PIL.Image.open(path)
 
@@ -21,6 +22,7 @@ def load_img(path, scale=1, size=None):
     img_array = img_array / 255
 
     return img_array
+
 
 def save_img(array, path):
     img = PIL.Image.fromarray(array)
@@ -44,7 +46,6 @@ def unload_img_vgg19(img):
     return img
 
 
-
 def RGBsplitter(img):
     '''
     Returns individual RGB channel arrays from image 
@@ -60,6 +61,5 @@ def RGBsplitter(img):
 
 
 if __name__ == '__main__':
+    print('Nothing here mate.')
 
-    # Test image loading and unloading process
-    data = load_img(import_path)

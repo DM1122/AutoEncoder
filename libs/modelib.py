@@ -5,6 +5,7 @@ import os
 import tensorflow as tf
 from tensorflow import keras
 
+
 def callbacks(log, model):
     '''
     Returns configured keras callbacks.
@@ -45,11 +46,13 @@ def callbacks(log, model):
 
     return callbacks
 
+
 def square_encoding(data):
     if int(math.sqrt(data.size) + 0.5) ** 2 == data.size:         # check if vector is perfect square
         data = np.reshape(data, (int(math.sqrt(data.size)) , int(math.sqrt(data.size) )))       # reshape vector to perfect square
     
     return data
+
 
 def flatten(data):
     data = np.reshape(data, (1,data.size))

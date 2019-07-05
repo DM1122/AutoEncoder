@@ -15,61 +15,57 @@ data_dir = './data/train/'
 log_dir = './logs/'
 model_dir = './models/'
 
-data_rgb = True
 data_size = 128
 data_split = 0.9
 
 batch_size = 16
-epochs = 10
+epochs = 1
 learn_rate = 0.001
 
 autoencoder_layers = 3
-autoencoder_bottleneck = 256
+autoencoder_bottleneck = 257
 autoencoder_ratio = 2
 
 
-def build_autoencoder(shape_x, shape_y, shape_z=None):
+def build_autoencoder():
     '''
     Builds an encoder and decoder separately, then returns an autoencoder model using a combination of functional & sequential api
-
-    Args:
-        shape_x: input width
-        shape_y: input height
-        shape_z: input channels (RGB)
     '''
 
+    #region Overview
+    print('')
     print('Building model with the following parameters:')
-    
-    if data_rgb:
-        print('Compression Factor: ', round(shape_x*shape_y*shape_z/autoencoder_bottleneck), '(', round(autoencoder_bottleneck*100/(shape_x*shape_y*shape_z), 2), '% )')
-        print('Input Layer:', shape_x*shape_y*shape_z)
-    else:
-        print('Compression Factor: ', round(shape_x*shape_y/autoencoder_bottleneck), '(', round(autoencoder_bottleneck*100/(shape_x*shape_y), 2), '% )')
-        print('Input Layer:', shape_x*shape_y)
+    print('Input Layer:', x_train[0].size)
+    nodes_sum = 0
+    nodes_sum += x_train[0].size
+
     for l in range(autoencoder_layers):
-        print('Encoder Layer', l+1, ':', autoencoder_bottleneck * autoencoder_ratio**(autoencoder_layers - (l+1)))
+        nodes = autoencoder_bottleneck * autoencoder_ratio**(autoencoder_layers - (l+1))
+        nodes_sum += nodes
+        print('Encoder Layer', l+1, ':', nodes)
+
     for l in range(autoencoder_layers-1):
-        print('Decoder Layer', l+1, ':', autoencoder_bottleneck * autoencoder_ratio**(l+1))
-    if data_rgb:
-        print('Output Layer:', shape_x*shape_y*shape_z)
-    else:
-        print('Output Layer:', shape_x*shape_y)
+        nodes = autoencoder_bottleneck * autoencoder_ratio**(l+1)
+        nodes_sum += nodes
+        print('Decoder Layer', l+1, ':', nodes)
+
+    print('Output Layer:', x_train[0].size)
+    nodes_sum += x_train[0].size
+    print('Model Size: ', nodes_sum/1000, "kN")
+    print('Compression Factor: ', round(x_train[0].size/autoencoder_bottleneck), '(', round(autoencoder_bottleneck*100/x_train[0].size, 2), '% )')
     print('')
-    input('Press Enter to continue...')
+    input('Press Enter to begin...')
     print('')
+    #endregion
 
 
     #region Encoder assembly
     encoder = keras.Sequential()
 
-    if shape_z is not None:
-        encoder_input = keras.layers.Input(shape=(shape_x, shape_y, shape_z, ))      # [width, height, channels, batch]
-        encoder.add(encoder_input)
-        encoder.add(keras.layers.Flatten(input_shape=(shape_x, shape_y, shape_z, )))        # because keras does not like to open models wihout an input_shape() in first layer
-    else:
-        encoder_input = keras.layers.Input(shape=(shape_x, shape_y, ))      # [width, height, batch]
-        encoder.add(encoder_input)
-        encoder.add(keras.layers.Flatten(input_shape=(shape_x, shape_y, )))
+    encoder_input = keras.layers.Input(shape=x_train[0].shape)      # [width, height, channels, batch]
+    encoder.add(encoder_input)
+    encoder.add(keras.layers.Flatten(input_shape=x_train[0].shape))        # because keras does not like to open models wihout an input_shape() in first layer
+
 
     for l in range(autoencoder_layers):
         encoder.add(keras.layers.Dense(
@@ -90,9 +86,9 @@ def build_autoencoder(shape_x, shape_y, shape_z=None):
     #region Decoder assembly
     decoder = keras.Sequential()
 
-    decoder_input = keras.layers.Input(shape=(autoencoder_bottleneck, ))
+    decoder_input = keras.layers.Input(shape=autoencoder_bottleneck)
     decoder.add(decoder_input)
-    decoder.add(keras.layers.Flatten(input_shape=(autoencoder_bottleneck, )))        # because keras does not like to open models wihout an input_shape() in first layer
+    decoder.add(keras.layers.Flatten(input_shape=(autoencoder_bottleneck, )))
 
     for l in range(autoencoder_layers-1):
         decoder.add(keras.layers.Dense(
@@ -108,41 +104,36 @@ def build_autoencoder(shape_x, shape_y, shape_z=None):
             bias_constraint=None,
             name='Decoder_{}'.format(l+1)))
 
-    if shape_z is not None:
-        decoder.add(keras.layers.Dense(
-            units=shape_x * shape_y * shape_z,
-            activation='sigmoid',
-            use_bias=True,
-            kernel_initializer='glorot_uniform',
-            bias_initializer='zeros',
-            kernel_regularizer=None,
-            bias_regularizer=None,
-            activity_regularizer=None,
-            kernel_constraint=None,
-            bias_constraint=None,
-            name='Output'))
 
-        decoder.add(keras.layers.Reshape((shape_x, shape_y, shape_z)))
+    decoder.add(keras.layers.Dense(
+        units=x_train[0].size,
+        activation='sigmoid',
+        use_bias=True,
+        kernel_initializer='glorot_uniform',
+        bias_initializer='zeros',
+        kernel_regularizer=None,
+        bias_regularizer=None,
+        activity_regularizer=None,
+        kernel_constraint=None,
+        bias_constraint=None,
+        name='Output'))
 
-    else:
-        decoder.add(keras.layers.Dense(
-            units=shape_x * shape_y,
-            activation='sigmoid',
-            use_bias=True,
-            kernel_initializer='glorot_uniform',
-            bias_initializer='zeros',
-            kernel_regularizer=None,
-            bias_regularizer=None,
-            activity_regularizer=None,
-            kernel_constraint=None,
-            bias_constraint=None,
-            name='Output'))
-
-        decoder.add(keras.layers.Reshape((shape_x, shape_y))) 
+    decoder.add(keras.layers.Reshape(x_train[0].shape))
     #endregion
 
 
     autoencoder = keras.models.Model(inputs=encoder_input, outputs=decoder(encoder(encoder_input)))
+
+    print('Model assembled successfully!')
+    print('')
+    print('Encoder Summary:')
+    print(encoder.summary())
+    print('')
+    print('Decoder Summary:')
+    print(decoder.summary())
+    print('')
+    print('Autoencoder Summary:')
+    print(autoencoder.summary())
 
     return autoencoder, encoder, decoder
 
@@ -157,31 +148,25 @@ def preview_autoencoder():
             sample = x_train[random.randint(0,x_train.shape[0]-1)]
 
         # Plot original image
-        if data_rgb:
-            axs[0,i].imshow(sample, cmap=None, interpolation=None)
+        if x_train[0].ndim == 3:
+            axs[0,i].imshow(sample, cmap=None, interpolation=None)      # rgb
         else:
-            axs[0,i].imshow(sample, cmap='gray', interpolation=None)
+            axs[0,i].imshow(sample, cmap='gray', interpolation=None)        # grayscale
 
         # Plot encoding
         output_encoded = encoder.predict(np.expand_dims(sample, axis=0), batch_size=None, verbose=0, steps=None, callbacks=None)
-        output_encoded = np.squeeze(output_encoded, axis=0)
 
-        if int(math.sqrt(output_encoded.size) + 0.5) ** 2 == output_encoded.size:         # check if vector is perfect square and can be displayed in 2D
-            output_encoded_reshaped = np.reshape(output_encoded, (int(math.sqrt(output_encoded.size)) , int(math.sqrt(output_encoded.size) )))       # reshape vector to perfect square
-            axs[1,i].imshow(output_encoded_reshaped, cmap='gray', interpolation=None)
-        else:
-            axs[1,i].imshow(np.expand_dims(output_encoded, axis=0), cmap='gray', interpolation=None)
+        axs[1,i].imshow(modelib.square_encoding(output_encoded), cmap='gray', interpolation=None)
         
         # Plot decoding
-        output_decoded = decoder.predict(np.expand_dims(output_encoded, axis=0), batch_size=None, verbose=0, steps=None, callbacks=None)
+        output_decoded = decoder.predict(output_encoded, batch_size=None, verbose=0, steps=None, callbacks=None)
         output_decoded = np.squeeze(output_decoded, axis=0)
 
-        if data_rgb:
+        if x_train[0].ndim == 3:
             axs[2,i].imshow(output_decoded, cmap=None, interpolation=None)
         else:
-            axs[2,i].imshow(output_decoded, cmap='gray', interpolation=None)        
+            axs[2,i].imshow(output_decoded, cmap='gray', interpolation=None)
 
-    # fig.tight_layout()
     fig.canvas.set_window_title('Autoencoder Output')
     
     pyplot.show()
@@ -220,13 +205,12 @@ if __name__ == '__main__':
         datalib.inspect(x_test, 'MNIST_testing')
     #endregion
 
-    if data_rgb:
-        autoencoder, encoder, decoder = build_autoencoder(x_train.shape[1], x_train.shape[2], x_train.shape[3])
-    else:
-        autoencoder, encoder, decoder = build_autoencoder(x_train.shape[1], x_train.shape[2])
-    
+    autoencoder, encoder, decoder = build_autoencoder()
+
     autoencoder.compile(optimizer=keras.optimizers.Adam(lr=learn_rate), loss='mse', metrics=['mae'])
 
+    print('')
+    print('Beginning training process...')
     if x_test.size is not 0:
         autoencoder.fit(
             x=x_train,
@@ -249,7 +233,7 @@ if __name__ == '__main__':
             batch_size=batch_size,
             epochs=epochs,
             verbose=1,
-            callbacks=None,         # modelib.callbacks(log_dir, model_dir)
+            callbacks=None,
             validation_data=None,
             shuffle=True,
             class_weight=None,
@@ -258,15 +242,13 @@ if __name__ == '__main__':
             steps_per_epoch=None,
             validation_steps=None)
 
-
     print('Training successful!')
 
     preview_autoencoder()
 
     if input('Save model? [Y/N]: ') == 'y':
         save_autoencoder()
-    else:
-        print('Model sent to android hell')
+    else: print('Model sent to android hell')
 
 
     print('Debug:\n$tensorboard --logdir=logs/')

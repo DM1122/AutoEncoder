@@ -8,6 +8,7 @@ from tensorflow import keras
 import libs
 from libs import imagelib
 
+
 def load_toy(sel='A'):
     '''
     Imports toy datasets
