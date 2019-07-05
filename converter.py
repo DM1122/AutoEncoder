@@ -27,6 +27,7 @@ if __name__ == '__main__':
 
     mode = input('Converter mode encode(1) decode(2) autoencoder(3): ')
 
+    # Encoder mode
     if mode == '1':
         model = keras.models.load_model(model_dir + 'encoder.h5')
         model.compile(optimizer=keras.optimizers.Adam(lr=0), loss='mse')
@@ -36,7 +37,7 @@ if __name__ == '__main__':
         data = np.concatenate([imagelib.load_img(path=input_dir+i, size=input_size) for i in os.listdir(input_dir)])
         datalib.inspect(data)
         
-        print('Running prediction...')
+        print('Running encoder...')
         output = model.predict(data, batch_size=None, verbose=1, steps=None, callbacks=None)
 
         for i in range(output.shape[0]):
@@ -54,10 +55,45 @@ if __name__ == '__main__':
         print('Output(s) saved to disk!')
 
 
-
+    # Decoder mode
     elif mode == '2':
         model = keras.models.load_model(model_dir + 'decoder.h5')
-    
+        model.compile(optimizer=keras.optimizers.Adam(lr=0), loss='mse')
+        print('Decoder model compiled successfully!')
+
+        print('Loading input...')
+        data = imagelib.load_img(path=input_dir+os.listdir(input_dir)[0])
+        data, _, _ = imagelib.RGBsplitter(data[0])
+        data = np.expand_dims(data, axis=0)
+
+        key = input('Please enter decoder key: ')
+
+        if key == '':
+            key = 1
+        else:
+            key = float(key)
+        
+        data = data * key
+        datalib.inspect(data)
+
+        print('Unpacking vector...')
+        
+        if data.ndim == 3:
+            data = modelib.flatten(data)
+
+        print('Running decoder...')
+        output = model.predict(data, batch_size=None, verbose=1, steps=None, callbacks=None)
+        datalib.inspect(output)
+        output = output * 255
+
+        output_r, output_g, output_b = imagelib.RGBsplitter(output[0])
+        output = np.dstack((output_r, output_g, output_b)).astype('int8')
+        
+
+        imagelib.save_img(array=output, path=output_dir+'decoded.png')
+        print('Output saved to disk!')
+
+    # Autoencoder mode
     elif mode == '3':
         model = keras.models.load_model(model_dir + 'autoencoder.h5')
 

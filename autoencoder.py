@@ -15,7 +15,6 @@ data_dir = './data/train/'
 log_dir = './logs/'
 model_dir = './models/'
 
-
 data_rgb = True
 data_size = 128
 data_split = 0.9
@@ -93,6 +92,7 @@ def build_autoencoder(shape_x, shape_y, shape_z=None):
 
     decoder_input = keras.layers.Input(shape=(autoencoder_bottleneck, ))
     decoder.add(decoder_input)
+    decoder.add(keras.layers.Flatten(input_shape=(autoencoder_bottleneck, )))        # because keras does not like to open models wihout an input_shape() in first layer
 
     for l in range(autoencoder_layers-1):
         decoder.add(keras.layers.Dense(

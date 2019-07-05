@@ -51,6 +51,6 @@ def square_encoding(data):
     
     return data
 
-# def flatten_encoding(data):
-
-#     return data
+def flatten(data):
+    data = np.reshape(data, (1,data.size))
+    return data

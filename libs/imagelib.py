@@ -46,6 +46,12 @@ def unload_img_vgg19(img):
 
 
 def RGBsplitter(img):
+    '''
+    Returns individual RGB channel arrays from image 
+
+    Args:
+        img: image array of shape [width, height, channel]
+    '''
     r = img[:, :, 0]
     g = img[:, :, 1]
     b = img[:, :, 2]
