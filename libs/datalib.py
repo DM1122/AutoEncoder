@@ -40,7 +40,7 @@ def inspect(data, name='data'):
         data (arr): numpy array containing data
         name (str): optional differentiator
     '''
-    print('Inspecting ' + name + '...')
+    print('\nInspecting ' + name + '...')
 
     i = random.randint(0,data.shape[0]-1)       # iterator used to sample random from dataset along batch axis
     

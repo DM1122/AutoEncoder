@@ -10,3 +10,7 @@ data/*
 
 images/*
 
+autoencoder/*
+
+converter/*
+

@@ -12,43 +12,60 @@ import libs
 from libs import datalib, imagelib, modelib
 
 
-input_dir = './data/load/'
-model_dir =  './models/load/'
-output_dir = './models/load/output/'
+input_size = 64
 
-input_size = 128
+
+def generate_repo():
+    name = os.path.splitext(os.path.basename(__file__))[0]
+
+    repo = {
+        'encode':'./'+name+'/encode/',
+        'decode':'./'+name+'/decode/',
+        'model':'./'+name+'/model/',
+        'output':'./'+name+'/output/'
+    }
+
+    if not os.path.isdir('./'+name+'/'):
+        print('No repo located. Instantiating one now...')
+
+        for dir in repo:
+            os.makedirs(repo.get(dir))
+    
+    return repo
 
 
 if __name__ == '__main__':
-    if os.listdir(output_dir) is not None:
-        shutil.rmtree(output_dir)
-        os.mkdir(output_dir)
+    repo = generate_repo()
 
-
-    mode = input('Converter mode encode(1) decode(2) autoencoder(3): ')
+    mode = input('Converter Modes:\n(1) Encode\n(2) Decode\n(3) Autoencoder\n')
 
     # Encoder mode
     if mode == '1':
-        model = keras.models.load_model(model_dir + 'encoder.h5')
+        repo['model'] = repo['model']+os.listdir(repo['model'])[0]+'/encoder.h5'
+        model = keras.models.load_model(repo['model'])
         model.compile(optimizer=keras.optimizers.Adam(lr=0), loss='mse')
         print('Encoder model compiled successfully!')
 
         print('Loading input...')
-        data = np.concatenate([imagelib.load_img(path=input_dir+i, size=input_size) for i in os.listdir(input_dir)])
+        data = np.concatenate([imagelib.load_img(path=repo['encode']+i, size=input_size) for i in os.listdir(repo['encode'])])
         datalib.inspect(data)
         
         print('Running encoder...')
         output = model.predict(data, batch_size=None, verbose=1, steps=None, callbacks=None)
 
+        repo['output'] = repo['output']+'encoded_'+dt.datetime.now().strftime('%Y%m%d-%H%M%S')+'/'
+        os.makedirs(repo['output'])        
         for i in range(output.shape[0]):
-            output_converted = np.expand_dims(output[i],axis=0)
-            output_converted = modelib.square_encoding(output_converted)
+            out = np.expand_dims(output[i],axis=0)
+            out = modelib.square_encoding(out)
+            datalib.inspect(np.expand_dims(out,axis=0))
 
-            key = np.amax(output_converted)        # get max pixel; will be used to uncompress features from image
-            output_converted = output_converted / key * 255
+            key = np.amax(out)        # get max pixel; will be used to uncompress features from image
+            out = out / key * 255
             
-            imagelib.save_img(array=output_converted, path=output_dir+'{}.png'.format(i))
-            k = open(output_dir+'{}.txt'.format(i), 'w')
+            imagelib.save_img(array=out, path=repo['output']+'{}.png'.format(i))
+
+            k = open(repo['output']+'{}.txt'.format(i), 'w')       # write key to disk
             k.write(str(key))
             k.close()
         
@@ -57,24 +74,24 @@ if __name__ == '__main__':
 
     # Decoder mode
     elif mode == '2':
-        model = keras.models.load_model(model_dir + 'decoder.h5')
+        repo['model'] = repo['model']+os.listdir(repo['model'])[0]+'/decoder.h5'
+        model = keras.models.load_model(repo['model'])
         model.compile(optimizer=keras.optimizers.Adam(lr=0), loss='mse')
         print('Decoder model compiled successfully!')
-
+    
         print('Loading input...')
-        data = imagelib.load_img(path=input_dir+os.listdir(input_dir)[0])
+        repo['decode'] = repo['decode']+os.listdir(repo['decode'])[0]
+        data = imagelib.load_img(path=repo['decode'])
         data, _, _ = imagelib.RGBsplitter(data[0])
-        data = np.expand_dims(data, axis=0)
+        data = np.expand_dims(data,axis=0)
+        datalib.inspect(data)
 
         key = input('Please enter decoder key: ')
-
-        if key == '':
-            key = 1
+        if key == '': key = 1
         else:
             key = float(key)
         
         data = data * key
-        datalib.inspect(data)
 
         print('Unpacking vector...')
         
@@ -84,13 +101,11 @@ if __name__ == '__main__':
         print('Running decoder...')
         output = model.predict(data, batch_size=None, verbose=1, steps=None, callbacks=None)
         datalib.inspect(output)
-        output = output * 255
-
-        output_r, output_g, output_b = imagelib.RGBsplitter(output[0])
-        output = np.dstack((output_r, output_g, output_b)).astype('int8')
+        output = (np.squeeze(output,axis=0) * 255).astype('uint8')
         
-
-        imagelib.save_img(array=output, path=output_dir+'decoded.png')
+        repo['output'] = repo['output']+'decoded_'+dt.datetime.now().strftime('%Y%m%d-%H%M%S')+'/'
+        os.makedirs(repo['output'])
+        imagelib.save_img(array=output, path=repo['output']+'decoded.png')
         print('Output saved to disk!')
 
     # Autoencoder mode

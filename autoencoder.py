@@ -15,16 +15,16 @@ data_dir = './data/train/'
 log_dir = './logs/'
 model_dir = './models/'
 
-data_size = 128
+data_size = 64
 data_split = 0.9
 
 batch_size = 16
-epochs = 1
+epochs = 10
 learn_rate = 0.001
 
-autoencoder_layers = 3
-autoencoder_bottleneck = 257
-autoencoder_ratio = 2
+autoencoder_layers = 5
+autoencoder_bottleneck = 16
+autoencoder_ratio = 5
 
 
 def build_autoencoder():
@@ -251,4 +251,4 @@ if __name__ == '__main__':
     else: print('Model sent to android hell')
 
 
-    print('Debug:\n$tensorboard --logdir=logs/')
+    print('\nDebug:\n$tensorboard --logdir=logs/')
